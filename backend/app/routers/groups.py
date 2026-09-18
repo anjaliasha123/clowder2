@@ -246,11 +246,11 @@ async def add_member(
                 group.users.append(new_member)
                 await group.replace()
                 # Add user to all affected Authorization entries
-                await AuthorizationDB.find(
-                    AuthorizationDB.group_ids == PydanticObjectId(group_id),
-                ).update(
-                    Push({AuthorizationDB.user_ids: username}),
-                )
+                # await AuthorizationDB.find(
+                #     AuthorizationDB.group_ids == PydanticObjectId(group_id),
+                # ).update(
+                #     Push({AuthorizationDB.user_ids: username}),
+                # )
                 # index the datasets in the group
                 # group_authorizations = await AuthorizationDB.find(
                 #     AuthorizationDB.group_ids == ObjectId(group_id)
@@ -290,12 +290,12 @@ async def remove_member(
             return group
 
         # Remove user from all affected Authorization entries
-        async for auth in AuthorizationDB.find(
-            AuthorizationDB.group_ids == PydanticObjectId(group_id),
-        ):
-            if username in auth.user_ids:
-                auth.user_ids.remove(username)
-                await auth.replace()
+        # async for auth in AuthorizationDB.find(
+        #     AuthorizationDB.group_ids == PydanticObjectId(group_id),
+        # ):
+        #     if username in auth.user_ids:
+        #         auth.user_ids.remove(username)
+        #         await auth.replace()
 
         # Update group itself
         group.users.remove(found_user)
