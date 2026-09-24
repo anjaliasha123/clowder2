@@ -6,6 +6,7 @@ from app.keycloak_auth import (
     get_current_user,
     keycloak_openid,
     update_user,
+    update_other_user,
 )
 from app.models.datasets import DatasetDBViewList
 from app.models.users import UserDB, UserIn, UserLogin, UserOut, UserUpdate
@@ -136,6 +137,43 @@ async def update_current_user(
 
     await user.save()
     return user.dict()
+
+@router.patch("/users/other/username", response_model=UserOut)
+async def update_current_user_name(
+        old_user_id: str,
+        new_user_id: str,
+):
+    try:
+        # Find user with old user id
+        existing_user = await UserDB.find_one(UserDB.email == old_user_id)
+        if existing_user is not None:
+            await update_other_user(
+                old_user_id,
+                new_user_id,
+                existing_user.password,
+                existing_user.first_name,
+                existing_user.last_name,
+            )
+        else:
+            raise HTTPException(status_code=404, detail=f"User {old_user_id} not found")
+    except KeycloakGetError as e:
+        raise HTTPException(
+            status_code=e.response_code,
+            detail=json.loads(e.error_message),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except KeycloakPutError as e:
+        raise HTTPException(
+            status_code=e.response_code,
+            detail=json.loads(e.error_message),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    # Update local user
+    if existing_user.email:
+        existing_user.email = new_user_id
+
+    await existing_user.save()
+    return existing_user.dict()
 
 
 @router.get("/users/me/is_admin", response_model=bool)
