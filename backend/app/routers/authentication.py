@@ -1,4 +1,5 @@
 import json
+import traceback
 
 from app.keycloak_auth import (
     create_user,
@@ -20,6 +21,7 @@ from keycloak.exceptions import (
     KeycloakPutError,
 )
 from passlib.hash import bcrypt
+from pydantic import BaseModel
 
 router = APIRouter()
 
@@ -138,11 +140,17 @@ async def update_current_user(
     await user.save()
     return user.dict()
 
+class UpdateUsernameRequest(BaseModel):
+    old_user_id: str
+    new_user_id: str
+
 @router.patch("/users/other/username", response_model=UserOut)
 async def update_current_user_name(
-        old_user_id: str,
-        new_user_id: str,
+        request: UpdateUsernameRequest,
 ):
+    print("Latest Version update_current_user_name 9/24")
+    old_user_id = request.old_user_id
+    new_user_id = request.new_user_id
     try:
         # Find user with old user id
         existing_user = await UserDB.find_one(UserDB.email == old_user_id)
@@ -150,7 +158,7 @@ async def update_current_user_name(
             await update_other_user(
                 old_user_id,
                 new_user_id,
-                existing_user.password,
+                None,
                 existing_user.first_name,
                 existing_user.last_name,
             )
@@ -168,6 +176,8 @@ async def update_current_user_name(
             detail=json.loads(e.error_message),
             headers={"WWW-Authenticate": "Bearer"},
         )
+    except Exception as e:
+        traceback.print_exc()
     # Update local user
     if existing_user.email:
         existing_user.email = new_user_id
