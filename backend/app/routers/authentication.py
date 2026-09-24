@@ -1,4 +1,5 @@
 import json
+import traceback
 
 from app.keycloak_auth import (
     create_user,
@@ -6,6 +7,7 @@ from app.keycloak_auth import (
     get_current_user,
     keycloak_openid,
     update_user,
+    update_other_user,
 )
 from app.models.datasets import DatasetDBViewList
 from app.models.users import UserDB, UserIn, UserLogin, UserOut, UserUpdate
@@ -19,6 +21,7 @@ from keycloak.exceptions import (
     KeycloakPutError,
 )
 from passlib.hash import bcrypt
+from pydantic import BaseModel
 
 router = APIRouter()
 
@@ -136,6 +139,51 @@ async def update_current_user(
 
     await user.save()
     return user.dict()
+
+class UpdateUsernameRequest(BaseModel):
+    old_user_id: str
+    new_user_id: str
+
+@router.patch("/users/other/username", response_model=UserOut)
+async def update_current_user_name(
+        request: UpdateUsernameRequest,
+):
+    print("Latest Version update_current_user_name 9/24")
+    old_user_id = request.old_user_id
+    new_user_id = request.new_user_id
+    try:
+        # Find user with old user id
+        existing_user = await UserDB.find_one(UserDB.email == old_user_id)
+        if existing_user is not None:
+            await update_other_user(
+                old_user_id,
+                new_user_id,
+                None,
+                existing_user.first_name,
+                existing_user.last_name,
+            )
+        else:
+            raise HTTPException(status_code=404, detail=f"User {old_user_id} not found")
+    except KeycloakGetError as e:
+        raise HTTPException(
+            status_code=e.response_code,
+            detail=json.loads(e.error_message),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except KeycloakPutError as e:
+        raise HTTPException(
+            status_code=e.response_code,
+            detail=json.loads(e.error_message),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except Exception as e:
+        traceback.print_exc()
+    # Update local user
+    if existing_user.email:
+        existing_user.email = new_user_id
+
+    await existing_user.save()
+    return existing_user.dict()
 
 
 @router.get("/users/me/is_admin", response_model=bool)

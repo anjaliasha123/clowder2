@@ -246,25 +246,25 @@ async def add_member(
                 group.users.append(new_member)
                 await group.replace()
                 # Add user to all affected Authorization entries
-                await AuthorizationDB.find(
-                    AuthorizationDB.group_ids == PydanticObjectId(group_id),
-                ).update(
-                    Push({AuthorizationDB.user_ids: username}),
-                )
+                # await AuthorizationDB.find(
+                #     AuthorizationDB.group_ids == PydanticObjectId(group_id),
+                # ).update(
+                #     Push({AuthorizationDB.user_ids: username}),
+                # )
                 # index the datasets in the group
-                group_authorizations = await AuthorizationDB.find(
-                    AuthorizationDB.group_ids == ObjectId(group_id)
-                ).to_list()
-                for auth in group_authorizations:
-                    if (
-                        dataset := await DatasetDB.get(
-                            PydanticObjectId(auth.dataset_id)
-                        )
-                    ) is not None:
-                        await index_dataset(
-                            es, DatasetOut(**dataset.dict()), auth.user_ids, update=True
-                        )
-                        await index_dataset_files(es, str(auth.dataset_id), update=True)
+                # group_authorizations = await AuthorizationDB.find(
+                #     AuthorizationDB.group_ids == ObjectId(group_id)
+                # ).to_list()
+                # for auth in group_authorizations:
+                #     if (
+                #         dataset := await DatasetDB.get(
+                #             PydanticObjectId(auth.dataset_id)
+                #         )
+                #     ) is not None:
+                #         await index_dataset(
+                #             es, DatasetOut(**dataset.dict()), auth.user_ids, update=True
+                #         )
+                #         await index_dataset_files(es, str(auth.dataset_id), update=True)
             return group.dict()
         raise HTTPException(status_code=404, detail=f"Group {group_id} not found")
     raise HTTPException(status_code=404, detail=f"User {username} not found")
@@ -290,28 +290,28 @@ async def remove_member(
             return group
 
         # Remove user from all affected Authorization entries
-        async for auth in AuthorizationDB.find(
-            AuthorizationDB.group_ids == PydanticObjectId(group_id),
-        ):
-            if username in auth.user_ids:
-                auth.user_ids.remove(username)
-                await auth.replace()
+        # async for auth in AuthorizationDB.find(
+        #     AuthorizationDB.group_ids == PydanticObjectId(group_id),
+        # ):
+        #     if username in auth.user_ids:
+        #         auth.user_ids.remove(username)
+        #         await auth.replace()
 
         # Update group itself
         group.users.remove(found_user)
         await group.replace()
         # index the datasets in the group
-        group_authorizations = await AuthorizationDB.find(
-            AuthorizationDB.group_ids == ObjectId(group_id)
-        ).to_list()
-        for auth in group_authorizations:
-            if (
-                dataset := await DatasetDB.get(PydanticObjectId(auth.dataset_id))
-            ) is not None:
-                await index_dataset(
-                    es, DatasetOut(**dataset.dict()), auth.user_ids, update=True
-                )
-                await index_dataset_files(es, str(auth.dataset_id), update=True)
+        # group_authorizations = await AuthorizationDB.find(
+        #     AuthorizationDB.group_ids == ObjectId(group_id)
+        # ).to_list()
+        # for auth in group_authorizations:
+        #     if (
+        #         dataset := await DatasetDB.get(PydanticObjectId(auth.dataset_id))
+        #     ) is not None:
+        #         await index_dataset(
+        #             es, DatasetOut(**dataset.dict()), auth.user_ids, update=True
+        #         )
+        #         await index_dataset_files(es, str(auth.dataset_id), update=True)
 
         return group.dict()
     raise HTTPException(status_code=404, detail=f"Group {group_id} not found")
